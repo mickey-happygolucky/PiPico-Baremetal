@@ -14,6 +14,22 @@ void write_reg_op(uint32_t addr, uint32_t value, uint32_t op) {
         write_reg(addr | op, value);
 }
 
+void init_systick() {
+        write_reg(SYSTICK_CSR, 0x1);
+}
+
+// us is up to max of 24bit (0xffffff)
+void delay_us(uint32_t us) {
+        write_reg(SYSTICK_RVR, us);
+        write_reg(SYSTICK_CVR, 0);
+
+        // wait for 0 to RVR
+        while (!read_reg(SYSTICK_CVR)) __asm__ __volatile__("");
+
+        // wait for RVR counting down to 0.
+        while (read_reg(SYSTICK_CVR)) __asm__ __volatile__("");
+}
+
 int main(void) {
 
         /////////////////////
@@ -39,10 +55,13 @@ int main(void) {
         write_reg(IO_GPIO25_CTRL, 0x5);
         uint32_t v = read_reg(IO_GPIO25_CTRL);
 
+        // SysTick init
+        init_systick();
+
         // Blink
         write_reg(SIO_GPIO_OE_SET, (1ul<<25));
         while (1) {
-                for (int i = 100000; i != 0; i--) ;
+                delay_us(100*1000); //100ms
                 write_reg(SIO_GPIO_OUT_XOR, (1ul<<25));
         }
         return 0;
